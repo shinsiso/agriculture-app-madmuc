@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+	var func = {};
+	func.webdb = {};
+	func.webdb.db = null;
+
+	//Open the database
+	func.webdb.openDB = function() {
+		document.getElementById("console").innerHTML += "<li> creating database </li>";
+		var dbSize = 5 * 1024 * 1024; // 5MB
+		func.webdb.db = openDatabase("agricultureDB", "1.0", "agricultureDB", dbSize);
+		if (func.webdb.db != null)
+			document.getElementById("console").innerHTML += "<li> database created </li>";
+	}
+
+	//Create table and fill in dummy data
+	func.webdb.createTables = function() {
+		if (func.webdb.db != null) {
+			
+			//Create product_crop table
+			document.getElementById("console").innerHTML += "<li> creating product_crop table </li>";
+			var db = func.webdb.db;
+			db.transaction(function(tx){
+				tx.executeSql("CREATE TABLE IF NOT EXISTS product_crop(productID INTEGER, cropID INTEGER, tankMix INTEGER, stageIDMin INTEGER, stageIDMax INTEGER)", 
+						[], null, func.webdb.onError);
+				
+				//Clear data stored previewsly
+				tx.executeSql("DELETE FROM product_crop", 
+						[], null, func.webdb.onError);
+				
+				//Fill in dummy data
+				tx.executeSql("INSERT INTO product_crop(productID, cropID, tankMix, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?, ?)", [1, 1, 2, 2, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_crop(productID, cropID, tankMix, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?, ?)", [2, 1, 2, 3, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_crop(productID, cropID, tankMix, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?, ?)", [3, 1, 3, 1, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_crop(productID, cropID, tankMix, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?, ?)", [4, 1, 1, 4, 6], null, func.webdb.onError);
+			});
+			document.getElementById("console").innerHTML += "<li> product_crop table created </li>";
+			
+			//Create product_weed table
+			document.getElementById("console").innerHTML += "<li> creating product_weed table </li>";
+			db = func.webdb.db;
+			db.transaction(function(tx){
+				tx.executeSql("CREATE TABLE IF NOT EXISTS product_weed(productID INTEGER, weedID INTEGER,  stageIDMin INTEGER, stageIDMax INTEGER)", 
+						[], null, func.webdb.onError);
+				
+				//Clear data
+				tx.executeSql("DELETE FROM product_weed", 
+						[], null, func.webdb.onError);
+				
+				//Fill in dummy data
+				tx.executeSql("INSERT INTO product_weed(productID, weedID, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?)", [1, 2, 2, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_weed(productID, weedID, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?)", [2, 2, 3, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_weed(productID, weedID, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?)", [3, 2, 1, 6], null, func.webdb.onError);
+				tx.executeSql("INSERT INTO product_weed(productID, weedID, stageIDMin, stageIDMax) VALUES (?, ?, ?, ?)", [5, 2, 4, 6], null, func.webdb.onError);
+			});
+			document.getElementById("console").innerHTML += "<li> product_weed table created </li>";
+		}else{
+			document.getElementById("console").innerHTML += "<li> open agriculture database first </li>";
+		}
+	}
+	
+	//Error handling function 
+	func.webdb.onError = function(tx, e){
+		alert("There has been an error: " + e.message);
+	}
+	
+	//Printout all tables
+	func.webdb.showAllTables = function() {
+		var db = func.webdb.db;
+		if (db != null) {
+			
+			db.transaction(function(tx) {
+				tx.executeSql("SELECT * FROM product_crop", [],
+						func.webdb.renderProductCropTable, func.webdb.onError);
+			});
+			
+			
+			db.transaction(function(tx) {
+				tx.executeSql("SELECT * FROM product_weed", [],
+						func.webdb.renderProductWeedTable, func.webdb.onError);
+			});
+		}
+	}
+
+	//Print out product_crop table
+	func.webdb.renderProductCropTable = function(tx, rs) {
+		document.getElementById("console").innerHTML += "<li> printing product_crop table </li>";
+		
+		var rowOutput = "";
+		for ( var i = 0; i < rs.rows.length; i++) {
+			var row = rs.rows.item(i);
+			rowOutput += "<li>[" 
+			                   + row.productID + "," 
+			                   + row.cropID + "," 
+			                   + row.tankMix + "," 
+			                   + row.stageIDMin + "," 
+			                   + row.stageIDMax + "]</li>";
+		}
+		document.getElementById("console").innerHTML += rowOutput;
+	}
+	
+	//Print out product_weed table
+	func.webdb.renderProductWeedTable = function(tx, rs) {
+		document.getElementById("console").innerHTML += "<li> printing product_weed table </li>";
+		
+		var rowOutput = "";
+		for ( var i = 0; i < rs.rows.length; i++) {
+			var row = rs.rows.item(i);
+			rowOutput += "<li>[" 
+			                   + row.productID + "," 
+			                   + row.weedID + "," 
+			                   + row.stageIDMin + "," 
+			                   + row.stageIDMax + "]</li>";
+		}
+		document.getElementById("console").innerHTML += rowOutput;
+	}
+	
+	//Execute the query
+	func.webdb.query = function(){
+		var db = func.webdb.db;
+		if(db != null) {
+			db.transaction(function(tx) {
+				tx.executeSql("SELECT productID FROM product_crop WHERE cropID = 1 AND stageIDMin < 5 AND stageIDMax > 5 AND productID IN (SELECT productID FROM product_weed WHERE weedID = 2 AND stageIDMin < 5 AND stageIDMax > 5)", [],
+						func.webdb.renderProductIDTable, func.webdb.onError);
+			});
+		}
+	}
+	
+	//Render the productID table return by the query
+	func.webdb.renderProductIDTable = function(tx, rs){
+		document.getElementById("console").innerHTML += "<li> printing productID table </li>";
+		
+		var rowOutput = "";
+		for ( var i = 0; i < rs.rows.length; i++) {
+			var row = rs.rows.item(i);
+			rowOutput += "<li>[" + row.productID  + "]</li>";
+		}
+		document.getElementById("console").innerHTML += rowOutput;
+	}
+
+	//Simply clear the console when it is too messy
+	func.clearConsole = function() {
+		document.getElementById("console").innerHTML = "";
+	}
+</script>
+</head>
+<body>
+
+<h1>Agriculture Database</h1>
+<button type="button" onclick="func.webdb.openDB()">Open Database</button>
+<button type="button" onclick="func.webdb.createTables()">Create Tables</button>
+<button type="button" onclick="func.webdb.showAllTables()">Show All Tables</button>
+<button type="button" onclick="func.clearConsole()">Clear Console</button>
+<button type="button" onclick="func.webdb.query()">The Query</button>
+<ul id="console">
+</ul>
+
+</body>
+</html> 
